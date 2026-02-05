@@ -93,7 +93,7 @@
                     "id": 8,
                     "isConstant": false,
                     "isLValue": false,
-                    "isPure": false,
+                    "isPure": true,
                     "lValueRequested": false,
                     "memberLocation": "115:13:1",
                     "memberName": "MIN_LIQUIDITY",

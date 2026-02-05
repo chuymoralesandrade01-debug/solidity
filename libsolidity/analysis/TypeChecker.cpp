@@ -3263,19 +3263,15 @@ bool TypeChecker::visit(MemberAccess const& _memberAccess)
 			annotation.type->category() == Type::Category::Function,
 			"Via contract type a function or a variable getter can be accessed."
 		);
-		solAssert(
-			annotation.type->category() == FunctionType::Category::Function,
-			"Impossible declaration type for function definition access"
-		);
 		// When contract is constant its members are also constant.
 		if (dynamic_cast<FunctionDefinition const*>(annotation.referencedDeclaration))
 		{
 			annotation.isPure = *_memberAccess.expression().annotation().isPure;
-			auto const* funcType = reinterpret_cast<FunctionType const*>(annotation.type);
+			auto const* accessedMemberFunctionType = reinterpret_cast<FunctionType const*>(annotation.type);
 			// In case when an internal library function is attached to contract, function call kind is internal.
 			solAssert(
-				funcType->kind() == FunctionType::Kind::Internal ||
-				funcType->kind() == FunctionType::Kind::External,
+				accessedMemberFunctionType->kind() == FunctionType::Kind::Internal ||
+				accessedMemberFunctionType->kind() == FunctionType::Kind::External,
 				"Impossible function call kind for contract type member."
 			);
 		}
@@ -3297,11 +3293,37 @@ bool TypeChecker::visit(MemberAccess const& _memberAccess)
 	{
 		annotation.isLValue = !structType->dataStoredIn(DataLocation::CallData);
 
-		if (auto const* varDecl = dynamic_cast<VariableDeclaration const*>(annotation.referencedDeclaration))
+		if (auto const* accessedVariableDeclaration =
+			dynamic_cast<VariableDeclaration const*>(annotation.referencedDeclaration))
 		{
-			annotation.isPure = varDecl->isConstant();
-			solAssert(!varDecl->isConstant(), "Struct member variables cannot be declared as constant.");
+			annotation.isPure =
+				*_memberAccess.expression().annotation().isPure ||
+				accessedVariableDeclaration->isConstant();
+
+			solUnimplementedAssert(
+				!accessedVariableDeclaration->isConstant(),
+				"Constant struct members are not yet implemented."
+			);
 		}
+		else if (dynamic_cast<FunctionDefinition const*>(annotation.referencedDeclaration))
+		{
+			solAssert(annotation.type->category() == Type::Category::Function, "");
+			auto const* accessedMemberFunctionType = reinterpret_cast<FunctionType const*>(annotation.type);
+			// In case when a library function is attached to struct, function call kind can internal or delegate call.
+			solAssert(
+				accessedMemberFunctionType->kind() == FunctionType::Kind::Internal ||
+				accessedMemberFunctionType->kind() == FunctionType::Kind::DelegateCall,
+				"Impossible function call kind for struct type member."
+			);
+
+			// When struct is constant its members are also constant.
+			annotation.isPure = *_memberAccess.expression().annotation().isPure;
+		}
+		else
+			solAssert(
+				false,
+				"Struct must have all members defined and they must be variables declarations or functions definitions"
+			);
 	}
 	else if (exprType->category() == Type::Category::Array)
 		annotation.isLValue = false;
