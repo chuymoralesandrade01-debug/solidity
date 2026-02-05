@@ -3239,45 +3239,55 @@ bool TypeChecker::visit(MemberAccess const& _memberAccess)
 
 	annotation.requiredLookup = requiredLookup;
 
-	// Sanity check. Variable declaration can only be a member of contract type, contract, module or struct.
+	// Sanity check. Only module, struct and contract instances as well as contract types can have accessible variables.
 	if (dynamic_cast<VariableDeclaration const*>(annotation.referencedDeclaration))
 	{
 		if (exprType->category() == Type::Category::TypeType)
 		{
 			solAssert(
 				reinterpret_cast<TypeType const*>(exprType)->actualType()->category() == Type::Category::Contract,
-				"Variable member is available only for module, contract or struct"
+				""
 			);
 		} else
-		{
 			solAssert(
 				exprType->category() == Type::Category::Module ||
 				exprType->category() == Type::Category::Struct ||
 				exprType->category() == Type::Category::Contract,
-				"Variable member is only available for module, contract or struct");
-		}
+				""
+			);
 	}
 
 	if (dynamic_cast<ContractType const*>(exprType))
 	{
+		solAssert(
+			annotation.type->category() == Type::Category::Function,
+			"Via contract type a function or a variable getter can be accessed."
+		);
+		solAssert(
+			annotation.type->category() == FunctionType::Category::Function,
+			"Impossible declaration type for function definition access"
+		);
 		// When contract is constant its members are also constant.
 		if (dynamic_cast<FunctionDefinition const*>(annotation.referencedDeclaration))
 		{
 			annotation.isPure = *_memberAccess.expression().annotation().isPure;
-			solAssert(
-				annotation.type->category() == FunctionType::Category::Function,
-				"Impossible declaration type for function definition access"
-			);
 			auto const* funcType = reinterpret_cast<FunctionType const*>(annotation.type);
-			// In case when internal library function is attached to contract, function call kind is internal.
+			// In case when an internal library function is attached to contract, function call kind is internal.
 			solAssert(
 				funcType->kind() == FunctionType::Kind::Internal ||
 				funcType->kind() == FunctionType::Kind::External,
 				"Impossible function call kind for contract type member."
 			);
 		}
-		else if (auto const* varDecl = dynamic_cast<VariableDeclaration const*>(annotation.referencedDeclaration))
-			annotation.isPure = *_memberAccess.expression().annotation().isPure && varDecl->isConstant();
+		else if (
+			auto const* accessedVariableDeclaration =
+				dynamic_cast<VariableDeclaration const*>(annotation.referencedDeclaration)
+		)
+		{
+			annotation.isPure =
+				*_memberAccess.expression().annotation().isPure ||
+				accessedVariableDeclaration->isConstant();
+		}
 		else
 			solAssert(false,"Impossible declaration type for contact member.");
 
