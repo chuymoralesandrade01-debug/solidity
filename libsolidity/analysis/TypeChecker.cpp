@@ -3302,7 +3302,7 @@ bool TypeChecker::visit(MemberAccess const& _memberAccess)
 
 			solUnimplementedAssert(
 				!accessedVariableDeclaration->isConstant(),
-				"Constant struct members are not yet implemented."
+				"Constant structs and struct members are not yet implemented."
 			);
 		}
 		else if (dynamic_cast<FunctionDefinition const*>(annotation.referencedDeclaration))
@@ -3318,6 +3318,10 @@ bool TypeChecker::visit(MemberAccess const& _memberAccess)
 
 			// When struct is constant its members are also constant.
 			annotation.isPure = *_memberAccess.expression().annotation().isPure;
+			solUnimplementedAssert(
+				!(*annotation.isPure),
+				"Constant structs and struct members are not yet implemented."
+			);
 		}
 		else
 			solAssert(
