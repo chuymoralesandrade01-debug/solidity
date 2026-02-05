@@ -3370,7 +3370,7 @@ bool TypeChecker::visit(MemberAccess const& _memberAccess)
 				solAssert(
 					typeTypeMember->actualType()->category() == Type::Category::Struct ||
 					typeTypeMember->actualType()->category() == Type::Category::Enum ||
-					// Note: We add Contract intentionally, to cover possible contract nesting case.
+					// Note: We add Contract intentionally, to cover a possible contract nesting case.
 					typeTypeMember->actualType()->category() == Type::Category::Contract ||
 					typeTypeMember->actualType()->category() == Type::Category::UserDefinedValueType,
 					"Impossible `TypeType` category as contract member."
@@ -3420,8 +3420,11 @@ bool TypeChecker::visit(MemberAccess const& _memberAccess)
 		}
 		else if (annotation.type->category() == ModuleType::Category::Module)
 			annotation.isPure = true;
-		else if (auto const* varDecl = dynamic_cast<VariableDeclaration const*>(annotation.referencedDeclaration))
-			annotation.isPure = varDecl->isConstant();
+		else if (
+			auto const* accessedMemberVariableDeclaration =
+			dynamic_cast<VariableDeclaration const*>(annotation.referencedDeclaration)
+		)
+			annotation.isPure = accessedMemberVariableDeclaration->isConstant();
 		else
 			solAssert(false, "Impossible module member type.");
 
